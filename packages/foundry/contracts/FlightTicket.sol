@@ -22,26 +22,31 @@ contract FlightTicket is ERC1155, Ownable {
     event FlightTicket_TicketCancelled(address indexed _passenger, uint256 _flightId);
     event FlightTicket_BalanceClaimed(address _passenger, uint256 _amount);
     event FlightTicket_FundsWithdrawn(uint256 _flightId, uint256 _amount);
-
     error FlightTicket_AirportsCannotBeEmpty(string _airportOrigin, string _airportDestination);
     error FlightTicket_AircraftCannotBeEmpty(string _aircraftModel);
-    error FlightTicket_FlightCannotBeLessThanOneDay(uint256 _departureTime, 
-    uint256 _currentTimestamp);
+    error FlightTicket_FlightCannotBeLessThanOneDay(uint256 _departureTime, uint256 _currentTimestamp);
     error FlightTicket_SeatsMustBeGreaterThanZero(uint256 _totalSeats);
     error FlightTicket_FlightDoesNotExist(uint256 _flightId);
-    error FlightTicket_NoSeatsAvailable(uint256 _flightId, uint256 _seatsBooked, 
-    uint256 _totalSeats);
+    error FlightTicket_NoSeatsAvailable(uint256 _flightId, uint256 _seatsBooked, uint256 _totalSeats);
     error FlightTicket_IncorrectPaymentAmount(uint256 _flightId, 
     uint256 _seatsBooked, uint256 _totalSeats);
     error FlightTicket_FlightTicketFinished(uint256 _ticketFinished);
     error FlightTicket_NoTicketFound(address _sender, uint256 _flightId);
     error FlightTicket_NoBalanceToClaim(address _passenger);
+    error FlightTicket_WaitForFlightTime(uint256 _flightId, uint256 _departureTime);
+    error FlightTicket_FlightAlreadyDeparted(uint256 _departureTime, uint256 _currentTimestamp);
+    error FlightTicket_TooLateToCancel(uint256 _latestCancelTime, uint256 _currentTimestamp);
 
+
+    
 /*
 uint256 departureTime = recebe o block.timestamp
 deve ser convertido para Unix timestamp na regra front/back antes de chegar no contrato
-departureTime deve receber o block.timestamp do horario definido para decolagem do voo convertido            block.timestamp == 01/01/70 Unix timestamp
+departureTime deve receber o block.timestamp do horario definido para decolagem do voo convertido
+block.timestamp == 01/01/70 Unix timestamp
 */
+
+    // eficiencia de vars*
     struct Flight {
         string airportOrigin; // GRU, CNF, CWB
         string airportDestination; // GRU, CNF, CWB
@@ -66,13 +71,15 @@ departureTime deve receber o block.timestamp do horario definido para decolagem 
         string calldata _airportDestination,
         uint256 _departureTime,
         string calldata _aircraftModel,
-        uint256 _totalSeats)external onlyOwner {
+        uint256 _totalSeats) external onlyOwner {
         if (bytes(_airportOrigin).length == 0 ||
             bytes(_airportDestination).length == 0) {
                 revert FlightTicket_AirportsCannotBeEmpty(_airportOrigin, _airportDestination);
             }
-        if (_departureTime <= block.timestamp + 1 days) revert FlightTicket_FlightCannotBeLessThanOneDay(_departureTime, block.timestamp);
-        if (bytes(_aircraftModel).length == 0) revert FlightTicket_AircraftCannotBeEmpty(_aircraftModel);
+        if (_departureTime <= block.timestamp + 1 days) 
+        revert FlightTicket_FlightCannotBeLessThanOneDay(_departureTime, block.timestamp);
+        if (bytes(_aircraftModel).length == 0) 
+        revert FlightTicket_AircraftCannotBeEmpty(_aircraftModel);
         if (_totalSeats == 0) revert FlightTicket_SeatsMustBeGreaterThanZero(_totalSeats);
 
         // uint256 departureTime = block.timestamp + 14 days;
@@ -99,8 +106,10 @@ departureTime deve receber o block.timestamp do horario definido para decolagem 
 
         if (flight.seatsBooked >= flight.totalSeats) 
         revert FlightTicket_NoSeatsAvailable(_flightId, flight.seatsBooked, flight.totalSeats);
+
         if (msg.value > flight.price || msg.value < flight.price) 
         revert FlightTicket_IncorrectPaymentAmount(_flightId, msg.value, flight.price);
+
         if (block.timestamp >= s_flights[_flightId].departureTime - 1 hours) {
             revert FlightTicket_FlightTicketFinished(s_flights[_flightId].departureTime - 1 hours);
         }
@@ -114,53 +123,73 @@ departureTime deve receber o block.timestamp do horario definido para decolagem 
     }
 
     function cancelTicket(uint256 _flightId) external {
+         // CHECKS
+        // Check 1: Verify flight exists
+        if (_flightId >= s_flightId) 
+            revert FlightTicket_FlightDoesNotExist(_flightId);
+        
+        // Check 2: Verify passenger owns ticket
         if (balanceOf(msg.sender, _flightId) == 0) 
-        revert FlightTicket_NoTicketFound(msg.sender, _flightId);
-        if (block.timestamp >= s_flights[_flightId].departureTime - 1 hours) {
-            revert FlightTicket_FlightTicketFinished(s_flights[_flightId].departureTime - 1 hours);
-        }
-
+            revert FlightTicket_NoTicketFound(msg.sender, _flightId);
+        
         Flight storage flight = s_flights[_flightId];
+        
+        // Check 3: Prevent cancellation after departure
+        if (block.timestamp >= flight.departureTime) 
+            revert FlightTicket_FlightAlreadyDeparted(flight.departureTime, block.timestamp);
+        
+        // Check 4: Prevent cancellation within 1 hour of departure
+        if (block.timestamp >= flight.departureTime - 1 hours) 
+            revert FlightTicket_TooLateToCancel(flight.departureTime, block.timestamp);
 
-        --flight.seatsBooked;
-        flight.balance = flight.balance - flight.price;
-
-        s_passengerBalance[msg.sender] = s_passengerBalance[msg.sender] + flight.price;
-
-        _burn(msg.sender, _flightId, 1);
-
+        // EFFECTS: 
+        // Update flight occupancy
+        --flight.seatsBooked;  
+        
+        // Update flight balance
+        flight.balance -= flight.price;  
+        
+        // Track refundable amount 
+        s_passengerBalance[msg.sender] += flight.price;  
+        
+        // Burn ticket
+        _burn(msg.sender, _flightId, 1);  
+        
         emit FlightTicket_TicketCancelled(msg.sender, _flightId);
     }
     
     function claimPassengerBalance() external {
-        if (s_passengerBalance[msg.sender] == 0) 
-        revert FlightTicket_NoBalanceToClaim(msg.sender);
+        if (s_passengerBalance[msg.sender] == 0) revert FlightTicket_NoBalanceToClaim(msg.sender);
 
         uint256 amount = s_passengerBalance[msg.sender];
+        
         s_passengerBalance[msg.sender] = 0;
 
         emit FlightTicket_BalanceClaimed(msg.sender, amount);
 
         (bool success, ) = msg.sender.call{value: amount}("");
-        require(success, "Transfer failed");
+        require(success, "Claim failed");
     }
 
-    function getFlightBalance(uint256 flightId) external view onlyOwner returns (uint256) {
-        require(flightId < s_flightId, "Flight does not exist");
-        return s_flights[flightId].balance;
+    function getFlightBalance(uint256 _flightId) external view onlyOwner returns (uint256) {
+        if (_flightId >= s_flightId) revert FlightTicket_FlightDoesNotExist(_flightId);
+        return s_flights[_flightId].balance;
     }
 
-    function withdrawFlightFunds(uint256 flightId) external onlyOwner {
+    function withdrawFlightFunds(uint256 _flightId) external onlyOwner {
+        if (_flightId >= s_flightId) 
+        revert FlightTicket_FlightDoesNotExist(_flightId);
 
-        require(flightId < s_flightId, "Flight does not exist");
-        require(s_flights[s_flightId].departureTime < block.timestamp, "Flight hour");
-
-        Flight storage flight = s_flights[flightId];
+        Flight storage flight = s_flights[_flightId];
+        
+        
+        if (block.timestamp < flight.departureTime) 
+        revert FlightTicket_WaitForFlightTime(_flightId, flight.departureTime);
 
         uint256 amount = flight.balance;
         flight.balance = 0;
 
-        emit FlightTicket_FundsWithdrawn(flightId, amount);
+        emit FlightTicket_FundsWithdrawn(_flightId, amount);
 
         (bool success, ) = msg.sender.call{value: amount}("");
         require(success, "Transfer failed");
