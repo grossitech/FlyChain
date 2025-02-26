@@ -36,6 +36,7 @@ contract FlightTicket is ERC1155, Ownable {
     error FlightTicket_WaitForFlightTime(uint256 _flightId, uint256 _departureTime);
     error FlightTicket_FlightAlreadyDeparted(uint256 _departureTime, uint256 _currentTimestamp);
     error FlightTicket_TooLateToCancel(uint256 _latestCancelTime, uint256 _currentTimestamp);
+    error FlightTicket_TooLateToBook(uint256 latestBookingTime, uint256 currentTimestamp );
 
 
     
@@ -76,7 +77,7 @@ block.timestamp == 01/01/70 Unix timestamp
             bytes(_airportDestination).length == 0) {
                 revert FlightTicket_AirportsCannotBeEmpty(_airportOrigin, _airportDestination);
             }
-        if (_departureTime <= block.timestamp + 1 days) 
+        if (_departureTime < block.timestamp + 1 days) 
         revert FlightTicket_FlightCannotBeLessThanOneDay(_departureTime, block.timestamp);
         if (bytes(_aircraftModel).length == 0) 
         revert FlightTicket_AircraftCannotBeEmpty(_aircraftModel);
@@ -110,8 +111,9 @@ block.timestamp == 01/01/70 Unix timestamp
         if (msg.value > flight.price || msg.value < flight.price) 
         revert FlightTicket_IncorrectPaymentAmount(_flightId, msg.value, flight.price);
 
-        if (block.timestamp >= s_flights[_flightId].departureTime - 1 hours) {
-            revert FlightTicket_FlightTicketFinished(s_flights[_flightId].departureTime - 1 hours);
+        if (block.timestamp >= flight.departureTime - 1 hours) {
+        revert FlightTicket_TooLateToBook(flight.departureTime - 1 hours,block.timestamp);
+        
         }
 
         ++flight.seatsBooked;
