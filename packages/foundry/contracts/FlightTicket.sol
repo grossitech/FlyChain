@@ -28,11 +28,10 @@ contract FlightTicket is ERC1155, Ownable {
     error FlightTicket_SeatsMustBeGreaterThanZero(uint256 _totalSeats);
     error FlightTicket_FlightDoesNotExist(uint256 _flightId);
     error FlightTicket_NoSeatsAvailable(uint256 _flightId, uint256 _seatsBooked, uint256 _totalSeats);
-    error FlightTicket_IncorrectPaymentAmount(uint256 _flightId, 
-    uint256 _seatsBooked, uint256 _totalSeats);
+    error FlightTicket_IncorrectPaymentAmount(uint256 _flightId, uint256 _seatsBooked, uint256 _totalSeats);
     error FlightTicket_FlightTicketFinished(uint256 _ticketFinished);
     error FlightTicket_NoTicketFound(address _sender, uint256 _flightId);
-    error FlightTicket_NoBalanceToClaim(address _passenger);
+    error FlightTicket_PassengerWithoutBalance(address _passenger);
     error FlightTicket_WaitForFlightTime(uint256 _flightId, uint256 _departureTime);
 
     
@@ -99,17 +98,16 @@ block.timestamp == 01/01/70 Unix timestamp
     function bookSeat(uint256 _flightId) external payable {
         if (_flightId >= s_flightId) revert FlightTicket_FlightDoesNotExist(_flightId);
 
+        if (block.timestamp >= s_flights[_flightId].departureTime - 1 hours) 
+            revert FlightTicket_FlightTicketFinished(s_flights[_flightId].departureTime - 1 hours);
+        
         Flight storage flight = s_flights[_flightId];
 
         if (flight.seatsBooked >= flight.totalSeats) 
-        revert FlightTicket_NoSeatsAvailable(_flightId, flight.seatsBooked, flight.totalSeats);
+            revert FlightTicket_NoSeatsAvailable(_flightId, flight.seatsBooked, flight.totalSeats);
 
-        if (msg.value > flight.price || msg.value < flight.price) 
-        revert FlightTicket_IncorrectPaymentAmount(_flightId, msg.value, flight.price);
-
-        if (block.timestamp >= s_flights[_flightId].departureTime - 1 hours) {
-            revert FlightTicket_FlightTicketFinished(s_flights[_flightId].departureTime - 1 hours);
-        }
+        if (flight.price != msg.value)
+            revert FlightTicket_IncorrectPaymentAmount(_flightId, msg.value, flight.price);
 
         ++flight.seatsBooked;
         flight.balance = flight.balance + msg.value;
@@ -119,9 +117,36 @@ block.timestamp == 01/01/70 Unix timestamp
         _mint(msg.sender, _flightId, 1, "");
     }
 
+    function bookSeatUsingPassengerBalance(uint256 _flightId) external {
+        if (_flightId >= s_flightId) revert FlightTicket_FlightDoesNotExist(_flightId);
+
+        if (block.timestamp >= s_flights[_flightId].departureTime - 1 hours) 
+            revert FlightTicket_FlightTicketFinished(s_flights[_flightId].departureTime - 1 hours);
+            
+        Flight storage flight = s_flights[_flightId];
+
+        if (flight.seatsBooked >= flight.totalSeats) 
+            revert FlightTicket_NoSeatsAvailable(_flightId, flight.seatsBooked, flight.totalSeats);
+            
+        if(flight.price < s_passengerBalance[msg.sender])
+            revert FlightTicket_IncorrectPaymentAmount(_flightId, s_passengerBalance[msg.sender], flight.price);
+
+        s_passengerBalance[msg.sender] = s_passengerBalance[msg.sender] - flight.price;        
+        ++flight.seatsBooked;
+        flight.balance = flight.balance + flight.price;
+
+        emit FlightTicket_SeatBooked(msg.sender, _flightId);
+
+        _mint(msg.sender, _flightId, 1, "");
+    }
+
+    function _getPassengerBalance() external view returns(uint256 _balance) {
+        if (s_passengerBalance[msg.sender] == 0) revert FlightTicket_PassengerWithoutBalance(msg.sender);
+        return s_passengerBalance[msg.sender];
+    }
+
     function cancelTicket(uint256 _flightId) external {
-        if (balanceOf(msg.sender, _flightId) == 0) 
-        revert FlightTicket_NoTicketFound(msg.sender, _flightId);
+        if (balanceOf(msg.sender, _flightId) == 0) revert FlightTicket_NoTicketFound(msg.sender, _flightId);
         if (block.timestamp >= s_flights[_flightId].departureTime - 1 hours) {
             revert FlightTicket_FlightTicketFinished(s_flights[_flightId].departureTime - 1 hours);
         }
@@ -139,7 +164,7 @@ block.timestamp == 01/01/70 Unix timestamp
     }
     
     function claimPassengerBalance() external {
-        if (s_passengerBalance[msg.sender] == 0) revert FlightTicket_NoBalanceToClaim(msg.sender);
+        if (s_passengerBalance[msg.sender] == 0) revert FlightTicket_PassengerWithoutBalance(msg.sender);
 
         uint256 amount = s_passengerBalance[msg.sender];
         s_passengerBalance[msg.sender] = 0;
