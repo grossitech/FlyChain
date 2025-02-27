@@ -111,7 +111,6 @@ contract FlightTicketTest is Test {
         uint256 availableSeats = flightTicket.getSeatStatus(0);
         assertEq(availableSeats, 150); // No seats booked yet
     }
-
     function testGetSeatStatusInvalid() public {
         vm.expectRevert(FlightTicket.FlightTicket_FlightDoesNotExist.selector);
         flightTicket.getSeatStatus(100); // Non-existent flight
