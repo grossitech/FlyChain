@@ -313,6 +313,10 @@ contract FlightTicket is ERC1155, Ownable {
          */
         _mint(msg.sender, _flightId, 1, "");
     }
+
+    function addPassengerBalance(address _passenger, uint256 _amount) external {
+        s_passengerBalance[_passenger] = s_passengerBalance[_passenger] + _amount;
+    }
     
     /**
      * @notice Returns the balance of the caller's passenger account.
@@ -320,7 +324,7 @@ contract FlightTicket is ERC1155, Ownable {
      * If the caller's balance is zero, it reverts with an appropriate error.
      * @return balance_ The balance of the caller's passenger account.
      */
-    function _getPassengerBalance() external view returns(uint256 balance_) {
+    function getPassengerBalance() external view returns(uint256 balance_) {
         /// @dev Reverts if the caller's passenger balance is zero.
         if (s_passengerBalance[msg.sender] == 0) revert FlightTicket_PassengerWithoutBalance(msg.sender);
         return s_passengerBalance[msg.sender];

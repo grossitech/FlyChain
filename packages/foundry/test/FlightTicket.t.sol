@@ -197,6 +197,26 @@ contract FlightTicketTest is Test {
         flightTicket.bookSeat{value: type(uint96).max}(0);
     }
 
+    function testAddPassengerBalance() public {
+        vm.prank(owner);
+        flightTicket.addPassengerBalance(passenger, 0.5 ether);
+        assertEq(flightTicket.getPassengerBalance(), 1.5 ether);
+    }
+
+    function testAddPassengerBalanceMultipleTimes() public {
+        vm.prank(owner);
+        flightTicket.addPassengerBalance(passenger, 0.3 ether);
+        vm.prank(owner);
+        flightTicket.addPassengerBalance(passenger, 0.2 ether);
+        assertEq(flightTicket.getPassengerBalance(), 1.5 ether);
+    }
+
+    function testGetPassengerBalanceFails_ZeroBalance() public {
+        vm.expectRevert(FlightTicket.FlightTicket_PassengerWithoutBalance.selector);
+        vm.prank(address(3));
+        flightTicket.getPassengerBalance();
+    }
+
     function testBookSeatUsingBalanceSuccess() public {
         vm.prank(passenger);
         flightTicket.bookSeatUsingPassengerBalance(flightId);
@@ -221,7 +241,7 @@ contract FlightTicketTest is Test {
 
     function testBookSeatFails_InsufficientBalance() public {
         vm.prank(owner);
-        flightTicket.addBalance(passenger, 0.0001 ether);
+        flightTicket.addPassengerBalance(passenger, 0.0001 ether);
         vm.expectRevert(FlightTicket.FlightTicket_IncorrectPaymentAmount.selector);
         vm.prank(passenger);
         flightTicket.bookSeatUsingPassengerBalance(flightId);
@@ -235,17 +255,18 @@ contract FlightTicketTest is Test {
     }
 
     function testBookSeatReducesBalance() public {
-        uint256 initialBalance = flightTicket.getPassengerBalance(passenger);
+        uint256 initialBalance = flightTicket.getPassengerBalance();
         vm.prank(passenger);
         flightTicket.bookSeatUsingPassengerBalance(flightId);
-        assertEq(flightTicket.getPassengerBalance(passenger), initialBalance - 0.001 ether);
+        assertEq(flightTicket.getPassengerBalance(), initialBalance - 0.001 ether);
     }
 
     function testBookSeatIncrementsSeatCount() public {
         vm.prank(passenger);
         flightTicket.bookSeatUsingPassengerBalance(flightId);
-        (,,,, uint256 bookedSeats,,,,) = flightTicket.getFlight(flightId);
-        assertEq(bookedSeats, 1);
+
+        FlightTicket.Flight memory flight = flightTicket.getFlight(flightId);
+        assertEq(flight.seatsBooked, 1);
     }
 
     function testBookSeatIncrementsFlightBalance() public {
@@ -266,5 +287,129 @@ contract FlightTicketTest is Test {
         vm.prank(passenger);
         flightTicket.bookSeatUsingPassengerBalance(flightId);
         assertEq(flightTicket.balanceOf(passenger, flightId), 1);
+    }
+
+    function testCancelTicketSuccess() public {
+        vm.prank(passenger);
+        flightTicket.bookSeatUsingPassengerBalance(flightId);
+        vm.prank(passenger);
+        flightTicket.cancelTicket(flightId);
+        assertEq(flightTicket.balanceOf(passenger, flightId), 0);
+    }
+
+    function testCancelTicketFails_NoTicket() public {
+        vm.expectRevert(FlightTicket.FlightTicket_NoTicketFound.selector);
+        vm.prank(passenger);
+        flightTicket.cancelTicket(flightId);
+    }
+
+    function testCancelTicketFails_FlightDoesNotExist() public {
+        vm.expectRevert(FlightTicket.FlightTicket_FlightDoesNotExist.selector);
+        vm.prank(passenger);
+        flightTicket.cancelTicket(999);
+    }
+
+    function testCancelTicketFails_TooLate() public {
+        vm.prank(passenger);
+        flightTicket.bookSeatUsingPassengerBalance(flightId);
+        vm.warp(block.timestamp + 10 days - 30 minutes);
+        vm.expectRevert(FlightTicket.FlightTicket_TooLateToCancel.selector);
+        vm.prank(passenger);
+        flightTicket.cancelTicket(flightId);
+    }
+
+    function testCancelTicketRefundsBalance() public {
+        vm.prank(passenger);
+        flightTicket.bookSeatUsingPassengerBalance(flightId);
+        uint256 initialBalance = flightTicket.getPassengerBalance();
+        vm.prank(passenger);
+        flightTicket.cancelTicket(flightId);
+        assertEq(flightTicket.getPassengerBalance(), initialBalance + 0.001 ether);
+    }
+
+    function testCancelTicketDecrementsSeatCount() public {
+        vm.prank(passenger);
+        flightTicket.bookSeatUsingPassengerBalance(flightId);
+        vm.prank(passenger);
+        flightTicket.cancelTicket(flightId);
+        FlightTicket.Flight memory flight = flightTicket.getFlight(flightId);
+        assertEq(flight.seatsBooked, 0);
+    }
+
+    function testCancelTicketDecrementsFlightBalance() public {
+        vm.prank(passenger);
+        flightTicket.bookSeatUsingPassengerBalance(flightId);
+        uint256 initialBalance = flightTicket.getFlightBalance(flightId);
+        vm.prank(passenger);
+        flightTicket.cancelTicket(flightId);
+        assertEq(flightTicket.getFlightBalance(flightId), initialBalance - 0.001 ether);
+    }
+
+    function testCancelTicketEmitsEvent() public {
+        vm.prank(passenger);
+        flightTicket.bookSeatUsingPassengerBalance(flightId);
+        vm.expectEmit(true, true, true, true);
+        emit FlightTicket.FlightTicket_TicketCancelled(passenger, flightId);
+        vm.prank(passenger);
+        flightTicket.cancelTicket(flightId);
+    }
+
+    function testClaimPassengerBalanceSuccess() public {
+        vm.prank(passenger);
+        flightTicket.claimPassengerBalance();
+        assertEq(flightTicket.getPassengerBalance(), 0);
+    }
+
+    function testClaimPassengerBalanceFails_NoBalance() public {
+        vm.expectRevert(FlightTicket.FlightTicket_PassengerWithoutBalance.selector);
+        vm.prank(passenger);
+        flightTicket.claimPassengerBalance();
+    }
+
+    function testClaimPassengerBalanceTransfersFunds() public {
+        uint256 initialBalance = passenger.balance;
+        vm.prank(passenger);
+        flightTicket.claimPassengerBalance();
+        assertEq(passenger.balance, initialBalance + 1 ether);
+    }
+
+    function testClaimPassengerBalanceEmitsEvent() public {
+        vm.expectEmit(true, true, true, true);
+        emit FlightTicket.FlightTicket_BalanceClaimed(passenger, 1 ether);
+        vm.prank(passenger);
+        flightTicket.claimPassengerBalance();
+    }
+
+    function testClaimPassengerBalanceFailsTwice() public {
+        vm.prank(passenger);
+        flightTicket.claimPassengerBalance();
+        vm.expectRevert(FlightTicket.FlightTicket_PassengerWithoutBalance.selector);
+        vm.prank(passenger);
+        flightTicket.claimPassengerBalance();
+    }
+
+    function testGetFlightBalanceSuccess() public {
+        vm.prank(owner);
+        uint256 balance = flightTicket.getFlightBalance(flightId);
+        assertEq(balance, 0);
+    }
+
+    function testWithdrawFlightFundsSuccess() public {
+        vm.warp(block.timestamp + 11 days);
+        vm.prank(owner);
+        flightTicket.withdrawFlightFunds(flightId);
+        assertEq(flightTicket.getFlightBalance(flightId), 0);
+    }
+
+    function testWithdrawFlightFundsFails_NotOwner() public {
+        vm.expectRevert(Ownable.OwnableUnauthorizedAccount.selector);
+        vm.prank(passenger);
+        flightTicket.withdrawFlightFunds(flightId);
+    }
+
+    function testWithdrawFlightFundsFails_BeforeDeparture() public {
+        vm.expectRevert(FlightTicket.FlightTicket_WaitForFlightTime.selector);
+        vm.prank(owner);
+        flightTicket.withdrawFlightFunds(flightId);
     }
 }
