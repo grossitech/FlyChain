@@ -49,14 +49,14 @@ contract FlightTicket is ERC1155, Ownable {
 
     /**
      * @dev Struct representing a flight.
+     * @param departureTime UNIX timestamp of departure
+     * @param totalSeats Maximum seat capacity
+     * @param seatsBooked Currently reserved seats
+     * @param price Ticket price in wei
+     * @param balance Accumulated funds for the flight
      * @param airportOrigin IATA code of departure airport
      * @param airportDestination IATA code of arrival airport
-     * @param departureTime UNIX timestamp of departure
      * @param aircraftModel ICAO aircraft type designation
-     * @param totalSeats Maximum seat capacity
-     * @param price Ticket price in wei
-     * @param seatsBooked Currently reserved seats
-     * @param balance Accumulated funds for the flight
      */
     struct Flight {
         uint48 departureTime;
@@ -121,7 +121,7 @@ contract FlightTicket is ERC1155, Ownable {
          * The flight data includes departure time, total seats, price, and other details.
          */
         s_flights[flightId] = Flight({
-            departureTime: _departureTime,
+            departureTime: uint48(_departureTime),
             totalSeats: _totalSeats,
             seatsBooked: 0,
             price: price,
@@ -144,6 +144,10 @@ contract FlightTicket is ERC1155, Ownable {
 
         /// @dev Increments the flight ID counter for the next flight.
         ++s_flightId;
+    }
+
+    function getFlight(uint256 _flightId) external view returns (Flight memory flight) {
+        flight = s_flights[_flightId];
     }
 
     /**
