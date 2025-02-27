@@ -14,13 +14,14 @@ contract FlightTicketTest is Test {
         vm.startPrank(owner); // Simulate actions as the owner
         flightTicket = new FlightTicket(owner); // Initialize contract
         vm.deal(passenger, 10 ether);
+        
+        flightTicket.addFlight("LAX", "JFK", uint48(block.timestamp + 8 days), "Boeing 737", 150);
+        flightTicket.addFlight("SFO", "ORD", uint48(block.timestamp + 10 days), "Airbus A320", 200);
+
     }
 
     // Test 1: Valid flight creation
     function testAddFlightValid() public {
-        flightTicket.addFlight("LAX", "JFK", uint48(block.timestamp + 8 days), "Boeing 737", 150);
-        flightTicket.addFlight("SFO", "ORD", uint48(block.timestamp + 10 days), "Airbus A320", 200);
-
         FlightTicket.Flight memory flight = flightTicket.getFlight(0);
         assertEq(flight.airportOrigin, "LAX");
         assertEq(flight.airportDestination, "JFK");
