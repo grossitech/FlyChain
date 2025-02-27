@@ -2,9 +2,10 @@
 pragma solidity 0.8.26;
 
 import "forge-std/Test.sol";
-import "../contracts/FlightTicket.sol"; // Adjust path if necessary
+import "../../contracts/FlightTicket.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract FlightTicketTest is Test {
+contract FlightTicketTest2 is Test {
     FlightTicket private flightTicket;
     address private owner = address(0x123);
     address public passenger = address(2);
