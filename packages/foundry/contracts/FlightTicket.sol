@@ -171,7 +171,7 @@ block.timestamp == 01/01/70 Unix timestamp
 
         emit FlightTicket_BalanceClaimed(msg.sender, amount);
 
-        (bool success, ) = msg.sender.call{value: amount}("");
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
         require(success, "Transfer failed");
     }
 
