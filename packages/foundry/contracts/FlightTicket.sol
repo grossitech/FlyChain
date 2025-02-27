@@ -20,10 +20,10 @@ contract FlightTicket is ERC1155, Ownable {
         uint256 indexed _flightId,
         string _airportOrigin,
         string _airportDestination,
-        uint256 _departureTime,
+        uint48 _departureTime,
         string _aircraftModel,
-        uint256 _totalSeats,
-        uint256 _price
+        uint16 _totalSeats,
+        uint96 _price
     );
     event FlightTicket_SeatBooked(address indexed _passenger, uint256 indexed _flightId);
     event FlightTicket_TicketCancelled(address indexed _passenger, uint256 indexed _flightId);
