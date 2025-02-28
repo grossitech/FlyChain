@@ -314,8 +314,12 @@ contract FlightTicket is ERC1155, Ownable {
         _mint(msg.sender, _flightId, 1, "");
     }
 
-    function addPassengerBalance(address _passenger, uint256 _amount) external {
-        s_passengerBalance[_passenger] = s_passengerBalance[_passenger] + _amount;
+    function addPassengerBalance() external payable {
+        if (msg.value == 0 )  revert FlightTicket_PassengerWithoutBalance(msg.sender);
+        if (msg.value > type(uint96).max) revert FlightTicket_BalanceOverflow(0, 0, msg.value);
+        if (s_passengerBalance[msg.sender] + msg.value > type(uint96).max) 
+            revert FlightTicket_BalanceOverflow(0, s_passengerBalance[msg.sender], msg.value);
+        s_passengerBalance[msg.sender] = s_passengerBalance[msg.sender] + msg.value;
     }
     
     /**
@@ -324,10 +328,9 @@ contract FlightTicket is ERC1155, Ownable {
      * If the caller's balance is zero, it reverts with an appropriate error.
      * @return balance_ The balance of the caller's passenger account.
      */
-    function getPassengerBalance() external view returns(uint256 balance_) {
-        /// @dev Reverts if the caller's passenger balance is zero.
-        if (s_passengerBalance[msg.sender] == 0) revert FlightTicket_PassengerWithoutBalance(msg.sender);
-        return s_passengerBalance[msg.sender];
+    function getPassengerBalance(address _passenger) external view returns(uint256 balance_) {
+        ///
+        return s_passengerBalance[_passenger];
     }
 
     /**
@@ -387,11 +390,8 @@ contract FlightTicket is ERC1155, Ownable {
      */
     function claimPassengerBalance() external {
         /// @notice CHECKS
-        /// @dev Ensures the caller has a non-zero balance to claim. Reverts if the balance is zero.
-        if (s_passengerBalance[msg.sender] == 0) revert FlightTicket_PassengerWithoutBalance(msg.sender);
 
         uint256 amount = s_passengerBalance[msg.sender];
-
         /// @dev Verifies that the caller's balance is greater than zero before proceeding with the claim.
         if (amount == 0) revert FlightTicket_PassengerWithoutBalance(msg.sender);
 

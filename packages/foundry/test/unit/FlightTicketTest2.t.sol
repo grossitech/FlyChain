@@ -5,6 +5,10 @@ import "forge-std/Test.sol";
 import "../../contracts/FlightTicket.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+/*
+testClaimPassengerBalanceSuccess
+*/
+
 contract FlightTicketTest2 is Test {
     FlightTicket private flightTicket;
     address private owner = address(0x123);
@@ -236,17 +240,61 @@ contract FlightTicketTest2 is Test {
     }
 
     function testAddPassengerBalance() public {
-        vm.prank(owner);
-        flightTicket.addPassengerBalance(passenger, 0.5 ether);
-        assertEq(flightTicket.getPassengerBalance(), 1.5 ether);
+        // Expect revert when checking balance before adding any funds
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                FlightTicket.FlightTicket_PassengerWithoutBalance.selector,
+                owner
+            )
+        );
+        vm.startPrank(owner);
+        flightTicket.getPassengerBalance();
+        vm.stopPrank();
+
+        // Add balance and check if it is correctly updated
+        vm.deal(owner, 1 ether); // Ensure the owner has enough funds
+        vm.startPrank(owner);
+        flightTicket.addPassengerBalance{value: 0.5 ether}();
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        assertEq(flightTicket.getPassengerBalance(), 0.5 ether);
+        vm.stopPrank();
     }
 
     function testAddPassengerBalanceMultipleTimes() public {
+        vm.deal(owner, 1 ether); // Ensure the owner has enough funds
+        vm.startPrank(owner);
+        flightTicket.addPassengerBalance{value: 0.3 ether}();
+        flightTicket.addPassengerBalance{value: 0.2 ether}();
+        vm.stopPrank();
+        vm.startPrank(owner);
+        assertEq(flightTicket.getPassengerBalance(), 0.5 ether);
+        vm.stopPrank();
+    }
+
+    function testGetPassengerBalanceFailsZeroBalance() public {
+        vm.prank(passenger);
+        vm.expectRevert(FlightTicket.FlightTicket_PassengerWithoutBalance.selector);
+        flightTicket.getPassengerBalance();
+    }
+
+    function testBookSeatUsingBalanceSuccess() public {
         vm.prank(owner);
-        flightTicket.addPassengerBalance(passenger, 0.3 ether);
+        flightTicket.addFlight("LAX", "JFK", uint48(block.timestamp + 8 days), "Boeing 737", 150);
+
         vm.prank(owner);
-        flightTicket.addPassengerBalance(passenger, 0.2 ether);
-        assertEq(flightTicket.getPassengerBalance(), 1.5 ether);
+        flightTicket.addPassengerBalance();
+
+        vm.prank(passenger);
+        flightTicket.bookSeatUsingPassengerBalance(3);
+        assertEq(flightTicket.getPassengerBalance(), 0); // Adjusted expected balance
+    }
+
+    function testBookSeatFailsInvalidFlight() public {
+        vm.prank(passenger);
+        vm.expectRevert(abi.encodeWithSelector(FlightTicket.FlightTicket_FlightDoesNotExist.selector, 3));
+        flightTicket.bookSeat{value: 0.001 ether}(999); // Assuming 999 is an invalid flight ID
     }
 
     function testGetPassengerBalanceFails_ZeroBalance() public {
@@ -255,19 +303,13 @@ contract FlightTicketTest2 is Test {
         flightTicket.getPassengerBalance();
     }
 
-    function testBookSeatUsingBalanceSuccess() public {
-        vm.prank(passenger);
-        flightTicket.bookSeatUsingPassengerBalance(flightId);
-        assertEq(flightTicket.getSeatStatus(flightId), 149);
-    }
-
     function testBookSeatFails_InvalidFlight() public {
         vm.expectRevert(FlightTicket.FlightTicket_FlightDoesNotExist.selector);
         vm.prank(passenger);
         flightTicket.bookSeatUsingPassengerBalance(999);
     }
 
-    function testBookSeatFails_NoSeatsAvailable() public {
+    function testBookSeatFailsNoSeatsAvailable() public {
         for (uint256 i = 0; i < 150; i++) {
             vm.prank(passenger);
             flightTicket.bookSeatUsingPassengerBalance(flightId);
@@ -277,15 +319,16 @@ contract FlightTicketTest2 is Test {
         flightTicket.bookSeatUsingPassengerBalance(flightId);
     }
 
-    function testBookSeatFails_InsufficientBalance() public {
+    function testBookSeatFailsInsufficientBalance() public {
         vm.prank(owner);
-        flightTicket.addPassengerBalance(passenger, 0.0001 ether);
+        uint256 amount = 0.001 ether;
+        flightTicket.addPassengerBalance();
         vm.expectRevert(FlightTicket.FlightTicket_IncorrectPaymentAmount.selector);
         vm.prank(passenger);
         flightTicket.bookSeatUsingPassengerBalance(flightId);
     }
 
-    function testBookSeatFails_LastMinuteBooking() public {
+    function testBookSeatFailsLastMinuteBooking() public {
         vm.warp(block.timestamp + 10 days - 30 minutes);
         vm.expectRevert(FlightTicket.FlightTicket_FlightTicketFinished.selector);
         vm.prank(passenger);
@@ -335,19 +378,19 @@ contract FlightTicketTest2 is Test {
         assertEq(flightTicket.balanceOf(passenger, flightId), 0);
     }
 
-    function testCancelTicketFails_NoTicket() public {
+    function testCancelTicketFailsNoTicket() public {
         vm.expectRevert(FlightTicket.FlightTicket_NoTicketFound.selector);
         vm.prank(passenger);
         flightTicket.cancelTicket(flightId);
     }
 
-    function testCancelTicketFails_FlightDoesNotExist() public {
+    function testCancelTicketFailsFlightDoesNotExist() public {
         vm.expectRevert(FlightTicket.FlightTicket_FlightDoesNotExist.selector);
         vm.prank(passenger);
         flightTicket.cancelTicket(999);
     }
 
-    function testCancelTicketFails_TooLate() public {
+    function testCancelTicketFailsTooLate() public {
         vm.prank(passenger);
         flightTicket.bookSeatUsingPassengerBalance(flightId);
         vm.warp(block.timestamp + 10 days - 30 minutes);
@@ -393,48 +436,90 @@ contract FlightTicketTest2 is Test {
     }
 
     function testClaimPassengerBalanceSuccess() public {
-        vm.prank(passenger);
+        // Add balance to the passenger
+        vm.deal(passenger, 1 ether);
+        vm.startPrank(passenger);
+        flightTicket.addPassengerBalance{value: 1 ether}();
+        vm.stopPrank();
+
+        assertEq(flightTicket.getPassengerBalance(passenger), 1 ether);
+
+        // Claim the balance
+        uint256 initialBalance = passenger.balance;
+        vm.startPrank(passenger);
         flightTicket.claimPassengerBalance();
-        assertEq(flightTicket.getPassengerBalance(), 0);
+        vm.stopPrank();
+
+        // Check the balance after claiming
+        assertEq(passenger.balance, initialBalance + 1 ether);
+        vm.startPrank(passenger);
+        assertEq(flightTicket.getPassengerBalance(passenger), 0);
+        vm.stopPrank();
     }
 
-    function testClaimPassengerBalanceFails_NoBalance() public {
-        vm.expectRevert(FlightTicket.FlightTicket_PassengerWithoutBalance.selector);
-        vm.prank(passenger);
+    function testClaimPassengerBalanceFailsNoBalance() public {
+        vm.expectRevert(abi.encodeWithSelector(
+            FlightTicket.FlightTicket_PassengerWithoutBalance.selector, 
+            passenger
+        ));
+        vm.startPrank(passenger);
         flightTicket.claimPassengerBalance();
+        vm.stopPrank();
     }
 
     function testClaimPassengerBalanceTransfersFunds() public {
-        uint256 initialBalance = passenger.balance;
-        vm.prank(passenger);
-        flightTicket.claimPassengerBalance();
-        assertEq(passenger.balance, initialBalance + 1 ether);
-    }
+    // Add balance to the passenger
+    vm.deal(passenger, 1 ether);
+    vm.startPrank(passenger);
+    flightTicket.addPassengerBalance{value: 1 ether}();
+    vm.stopPrank();
+
+    // Claim the balance
+    uint256 initialBalance = passenger.balance;
+    vm.startPrank(passenger);
+    flightTicket.claimPassengerBalance();
+    vm.stopPrank();
+
+    // Check the balance after claiming
+    assertEq(passenger.balance, initialBalance + 1 ether);
+}
 
     function testClaimPassengerBalanceEmitsEvent() public {
+       vm.deal(passenger, 1 ether);
+        vm.startPrank(passenger);
+        flightTicket.addPassengerBalance{value: 1 ether}();
+        vm.stopPrank();
+
+        // Expect the event to be emitted
         vm.expectEmit(true, true, true, true);
         emit FlightTicket.FlightTicket_BalanceClaimed(passenger, 1 ether);
-        vm.prank(passenger);
+
+        // Claim the balance
+        vm.startPrank(passenger);
         flightTicket.claimPassengerBalance();
+        vm.stopPrank();
     }
 
     function testClaimPassengerBalanceFailsTwice() public {
-        // Ensure the passenger has an initial balance to claim
-        vm.startPrank(owner);
-        flightTicket.addPassengerBalance(passenger, 1 ether);
-        vm.stopPrank();
+    // Add balance to the passenger
+    vm.deal(passenger, 1 ether);
+    vm.startPrank(passenger);
+    flightTicket.addPassengerBalance{value: 1 ether}();
+    vm.stopPrank();
 
-        // First claim should succeed
-        vm.startPrank(passenger);
-        flightTicket.claimPassengerBalance();
-        vm.stopPrank();
+    // First claim (success)
+    vm.startPrank(passenger);
+    flightTicket.claimPassengerBalance();
+    vm.stopPrank();
 
-        // Second claim should fail
-        vm.startPrank(passenger);
-        vm.expectRevert(FlightTicket.FlightTicket_PassengerWithoutBalance.selector);
-        flightTicket.claimPassengerBalance();
-        vm.stopPrank();
-    }
+    // Second claim (fail)
+    vm.startPrank(passenger);
+    vm.expectRevert(abi.encodeWithSelector(
+        FlightTicket.FlightTicket_PassengerWithoutBalance.selector, 
+        passenger));
+    flightTicket.claimPassengerBalance();
+    vm.stopPrank();
+}
 
     function testGetFlightBalanceSuccess() public {
         vm.startPrank(owner);
