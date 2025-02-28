@@ -46,6 +46,7 @@ contract FlightTicket is ERC1155URIStorage, Ownable {
     error FlightTicket_FlightAlreadyDeparted(uint256 _departureTime, uint256 _currentTimestamp);
     error FlightTicket_TooLateToCancel(uint256 _latestCancelTime, uint256 _currentTimestamp);
     error FlightTicket_TooLateToBook(uint256 _latestBookingTime, uint256 _currentTimestamp);
+    error FlightTicket_BalanceOverflow(uint256 currentBalance, uint256 addedBalance, uint256 totalBalance);
 
     /**
      * @dev Struct representing a flight.
@@ -73,7 +74,7 @@ contract FlightTicket is ERC1155URIStorage, Ownable {
     mapping(uint256 => Flight) public s_flights;
 
     /// @dev Mapping from passenger address to their balance.
-    mapping(address => uint256) public s_passengerBalance;
+    mapping(address => uint256) private s_passengerBalance;
 
     /// @dev Counter for flight IDs.
     uint256 public s_flightId;
@@ -108,7 +109,7 @@ contract FlightTicket is ERC1155URIStorage, Ownable {
             keccak256(bytes(_airportOrigin)) == keccak256(bytes(_airportDestination))) 
             revert FlightTicket_InvalidIATA(_airportOrigin, _airportDestination);
         if (_departureTime < block.timestamp + 7 days) 
-            revert FlightTicket_FlightCannotBeLessThanOneWeek(_departureTime, block.timestamp);
+            revert FlightTicket_FlightCannotBeLessThanOneWeek(_departureTime, uint48(block.timestamp));
         if (bytes(_aircraftModel).length == 0) 
             revert FlightTicket_AircraftCannotBeEmpty(_aircraftModel);
         if (_totalSeats == 0) 
