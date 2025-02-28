@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.26;
 
 import "./DeployHelpers.s.sol";
 import "../contracts/FlightTicket.sol";
@@ -25,6 +25,9 @@ contract DeployFlightTicket is ScaffoldETHDeploy {
      *      - Export contract addresses & ABIs to `nextjs` packages
      */
     function run() external ScaffoldEthDeployerRunner {
-        new FlightTicket(deployer);
+        FlightTicket ticket = new FlightTicket(deployer);
+        
+        uint48 departureTime = uint48(block.timestamp + 8 days);
+        ticket.addFlight("GRU", "JFK", departureTime, "B737", 180);
     }
 }
