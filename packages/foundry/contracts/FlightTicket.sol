@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import {ERC1155URIStorage} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155URIStorage.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
@@ -11,7 +12,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
  * @title Flight Ticket Management System
  * @dev ERC1155-based flight ticket system with booking, cancellation, and fund management capabilities
  */
-contract FlightTicket is ERC1155, Ownable {
+contract FlightTicket is ERC1155URIStorage, Ownable {
     /// @dev Using Open Zeppelin Address
     using Address for address;
 
@@ -38,7 +39,6 @@ contract FlightTicket is ERC1155, Ownable {
     error FlightTicket_FlightDoesNotExist(uint256 _flightId);
     error FlightTicket_NoSeatsAvailable(uint256 _flightId, uint256 _seatsBooked, uint256 _totalSeats);
     error FlightTicket_IncorrectPaymentAmount(uint256 _flightId, uint256 _msgValue, uint256 _ticketPrice);
-    error FlightTicket_BalanceOverflow(uint256 _flightId, uint256 _flightBalance, uint256 _msgValue);
     error FlightTicket_FlightTicketFinished(uint256 _ticketFinished);
     error FlightTicket_NoTicketFound(address _sender, uint256 _flightId);
     error FlightTicket_PassengerWithoutBalance(address _passenger);
@@ -103,7 +103,9 @@ contract FlightTicket is ERC1155, Ownable {
         string calldata _aircraftModel,
         uint16 _totalSeats // Saves gas compared to uint256
     ) external onlyOwner {
-        if (bytes(_airportOrigin).length != 3 || bytes(_airportDestination).length != 3) 
+        if (bytes(_airportOrigin).length != 3 ||
+            bytes(_airportDestination).length != 3 ||
+            keccak256(bytes(_airportOrigin)) == keccak256(bytes(_airportDestination))) 
             revert FlightTicket_InvalidIATA(_airportOrigin, _airportDestination);
         if (_departureTime < block.timestamp + 7 days) 
             revert FlightTicket_FlightCannotBeLessThanOneWeek(_departureTime, block.timestamp);
@@ -111,6 +113,9 @@ contract FlightTicket is ERC1155, Ownable {
             revert FlightTicket_AircraftCannotBeEmpty(_aircraftModel);
         if (_totalSeats == 0) 
             revert FlightTicket_SeatsMustBeGreaterThanZero(_totalSeats);
+
+        /// @dev Increments the flight ID counter for the next flight.
+        ++s_flightId;
 
         /// @dev Generates a new flight ID and sets a default ticket price.
         uint256 flightId = s_flightId;
@@ -142,44 +147,43 @@ contract FlightTicket is ERC1155, Ownable {
             price
         );
 
-        /// @dev Increments the flight ID counter for the next flight.
-        ++s_flightId;
-    }
-
-    function getFlight(uint256 _flightId) external view returns (Flight memory flight) {
-        flight = s_flights[_flightId];
+        _updateFlightURI(flightId);
     }
 
     /**
-     * @notice Returns the metadata URI for a specific flight, encoded in base64 format.
-     * @dev This function generates a JSON metadata URI for a flight, which includes details
-     * such as the flight ID, origin, destination, departure time, aircraft model, available seats, and price.
-     * The generated URI is returned as a data URI with base64 encoding.
-     * @param _flightId The ID of the flight for which to generate the metadata URI.
-     * @return uri_ The metadata URI in base64 encoded JSON format.
+     * @notice Internal function to update flight metadata URI.
+     * @param _flightId The ID of the flight.
      */
-    function getFlightURI(uint256 _flightId) external view returns (string memory uri_) {
-        Flight storage flight = s_flights[_flightId];
+    function _updateFlightURI(uint256 _flightId) internal {
+        string memory baseURI = "<https://ipfs.io/ipfs/bafkreihqotmgl5nz5mtytsfcgs33pw27bfl2wll5u4hilbsp7w7b5jc2pu/>";
+        string memory tokenURI = string(abi.encodePacked(baseURI, _uintToString(_flightId), ".json"));
+        _setURI(_flightId, tokenURI);
+    }
 
-        /**
-         * @dev Constructs a JSON string with flight details.
-         * Includes flight ID, origin, destination, departure time, aircraft model, available seats, and price.
-         */
-        string memory json = string(
-            abi.encodePacked(
-                '{"name": "Flight Ticket", "flightId": "', Strings.toString(_flightId),
-                '", "origin": "', flight.airportOrigin,
-                '", "destination": "', flight.airportDestination,
-                '", "departureTime": "', Strings.toString(flight.departureTime),
-                '", "aircraft": "', flight.aircraftModel,
-                '", "seatsAvailable": "', Strings.toString(flight.totalSeats - flight.seatsBooked),
-                '", "price": "', Strings.toString(flight.price),
-                '"}'
-            )
-        );
+    /**
+     * @dev Converts a uint256 to a string.
+     * @param _value The integer to convert.
+     * @return The string representation.
+     */
+    function _uintToString(uint256 _value) internal pure returns (string memory) {
+        if (_value == 0) return "0";
+        uint256 temp = _value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (_value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + _value % 10));
+            _value /= 10;
+        }
+        return string(buffer);
+    }
 
-        /// @dev Encodes the JSON string to base64 format and returns it as a data URI.
-        return string(abi.encodePacked("data:application/json;base64,", Base64.encode(bytes(json))));
+    function getFlight(uint256 _flightId) external view returns(Flight memory flight) {
+        return flight = s_flights[_flightId];
     }
 
     /**
@@ -229,14 +233,6 @@ contract FlightTicket is ERC1155, Ownable {
          */
         if (flight.price != msg.value)
             revert FlightTicket_IncorrectPaymentAmount(_flightId, msg.value, flight.price);
-
-        /**
-         * @dev Ensures that adding the payment to the flight balance does not cause an overflow of the uint96 type.
-         * Reverts if the balance would overflow.
-         * Using uint96 for otimization struct storage 
-         */
-        if (flight.balance + msg.value > type(uint96).max)
-            revert FlightTicket_BalanceOverflow(_flightId, flight.balance, msg.value);
 
         /// @notice EFFECTS
         /**
@@ -370,17 +366,17 @@ contract FlightTicket is ERC1155, Ownable {
         /// @notice EFFECTS
         /// @dev Updates the flight's seat bookings and balance. Refunds the ticket price to the caller's balance.
         --flight.seatsBooked;
-        flight.balance -= flight.price;
-        s_passengerBalance[msg.sender] += flight.price;
+        flight.balance = flight.balance - flight.price;
+        s_passengerBalance[msg.sender] = s_passengerBalance[msg.sender] + flight.price;
+
+        /// @dev Emits an event indicating that the ticket has been successfully canceled.
+        emit FlightTicket_TicketCancelled(msg.sender, _flightId);
 
         /**
          * @dev Burns the ticket from the caller's account, representing the cancellation of the seat booking.
          * ERC1155 internal interaction
          */ 
         _burn(msg.sender, _flightId, 1);
-
-        /// @dev Emits an event indicating that the ticket has been successfully canceled.
-        emit FlightTicket_TicketCancelled(msg.sender, _flightId);
     }
 
     /**
