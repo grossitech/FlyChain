@@ -1,10 +1,9 @@
 # FlyChain: Revolucionando a Venda de Passagens Aéreas com Blockchain
-Contrato `FlightTicket.sol`
 <img src="https://github.com/Cyber0Ulmo/HKT-AT-0V/blob/develop/Flychain.png?raw=true">
 
 ## Visão Geral
 
-FlyChain é uma solução inovadora que utiliza tecnologia blockchain para transformar o processo de venda e gerenciamento de passagens aéreas. Desenvolvido na rede Scroll, o projeto oferece uma plataforma transparente, eficiente e automatizada para passageiros e empresas aéreas.
+FlyChain (Contrato `FlightTicket.sol`) é uma solução inovadora que utiliza tecnologia blockchain para transformar o processo de venda e gerenciamento de passagens aéreas. Desenvolvido na rede Scroll, o projeto oferece uma plataforma transparente, eficiente e automatizada para passageiros e empresas aéreas.
 
 ## Características Principais
 
