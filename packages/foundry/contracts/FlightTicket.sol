@@ -33,7 +33,7 @@ contract FlightTicket is ERC1155, Ownable {
     /// @dev Error declarations
     error FlightTicket_InvalidIATA(string _airportOrigin, string _airportDestination);
     error FlightTicket_AircraftCannotBeEmpty(string _aircraftModel);
-    error FlightTicket_FlightCannotBeLessThanOneDay(uint256 _departureTime, uint256 _currentTimestamp);
+    error FlightTicket_FlightCannotBeLessThanOneWeek(uint256 _departureTime, uint256 _currentTimestamp);
     error FlightTicket_SeatsMustBeGreaterThanZero(uint256 _totalSeats);
     error FlightTicket_FlightDoesNotExist(uint256 _flightId);
     error FlightTicket_NoSeatsAvailable(uint256 _flightId, uint256 _seatsBooked, uint256 _totalSeats);
@@ -106,7 +106,7 @@ contract FlightTicket is ERC1155, Ownable {
         if (bytes(_airportOrigin).length != 3 || bytes(_airportDestination).length != 3) 
             revert FlightTicket_InvalidIATA(_airportOrigin, _airportDestination);
         if (_departureTime < block.timestamp + 7 days) 
-            revert FlightTicket_FlightCannotBeLessThanOneDay(_departureTime, block.timestamp);
+            revert FlightTicket_FlightCannotBeLessThanOneWeek(_departureTime, block.timestamp);
         if (bytes(_aircraftModel).length == 0) 
             revert FlightTicket_AircraftCannotBeEmpty(_aircraftModel);
         if (_totalSeats == 0) 

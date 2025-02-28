@@ -11,6 +11,20 @@ contract FlightTicketTest2 is Test {
     address public passenger = address(2);
     uint256 flightId = 0;
 
+    struct Flight {
+        uint48 departureTime;
+        uint16 totalSeats;
+        uint16 seatsBooked;
+        uint96 price;
+        uint96 balance;
+        string airportOrigin;
+        string airportDestination;
+        string aircraftModel;
+    }
+
+    /// @dev Mapping from flight ID to Flight struct.
+    mapping(uint256 => Flight) public s_flights;
+
     function setUp() public {
         vm.startPrank(owner); // Simulate actions as the owner
         flightTicket = new FlightTicket(owner); // Initialize contract
@@ -19,6 +33,29 @@ contract FlightTicketTest2 is Test {
         flightTicket.addFlight("LAX", "JFK", uint48(block.timestamp + 8 days), "Boeing 737", 150);
         flightTicket.addFlight("SFO", "ORD", uint48(block.timestamp + 10 days), "Airbus A320", 200);
 
+        Flight memory flight1 = Flight({
+            departureTime: uint48(block.timestamp + 8 days),
+            totalSeats: 150,
+            seatsBooked: 0,
+            price: 0.001 ether,
+            balance: 0,
+            airportOrigin: "LAX",
+            airportDestination: "JFK",
+            aircraftModel: "Boeing 737"
+        });
+        s_flights[1] = flight1;
+
+        Flight memory flight2 = Flight({
+            departureTime: uint48(block.timestamp + 8 days),
+            totalSeats: 200,
+            seatsBooked: 0,
+            price: 0.001 ether,
+            balance: 0,
+            airportOrigin: "SFO",
+            airportDestination: "ORD",
+            aircraftModel: "Airbus A320"
+        });
+        s_flights[2] = flight2;
     }
 
     // Test 1: Valid flight creation
@@ -44,7 +81,7 @@ contract FlightTicketTest2 is Test {
 
     // Test 4: Flight departure time is too soon
     function testAddFlightDepartureTimeTooSoon() public {
-        vm.expectRevert(FlightTicket.FlightTicket_FlightCannotBeLessThanOneDay.selector);
+        vm.expectRevert(FlightTicket.FlightTicket_FlightCannotBeLessThanOneWeek.selector);
         flightTicket.addFlight("LAX", "JFK", uint48(block.timestamp + 6 days), "Boeing 737", 150);
     }
 
@@ -382,35 +419,49 @@ contract FlightTicketTest2 is Test {
     }
 
     function testClaimPassengerBalanceFailsTwice() public {
-        vm.prank(passenger);
+        // Ensure the passenger has an initial balance to claim
+        vm.startPrank(owner);
+        flightTicket.addPassengerBalance(passenger, 1 ether);
+        vm.stopPrank();
+
+        // First claim should succeed
+        vm.startPrank(passenger);
         flightTicket.claimPassengerBalance();
+        vm.stopPrank();
+
+        // Second claim should fail
+        vm.startPrank(passenger);
         vm.expectRevert(FlightTicket.FlightTicket_PassengerWithoutBalance.selector);
-        vm.prank(passenger);
         flightTicket.claimPassengerBalance();
+        vm.stopPrank();
     }
 
     function testGetFlightBalanceSuccess() public {
-        vm.prank(owner);
+        vm.startPrank(owner);
         uint256 balance = flightTicket.getFlightBalance(flightId);
         assertEq(balance, 0);
+        vm.stopPrank();
     }
 
     function testWithdrawFlightFundsSuccess() public {
         vm.warp(block.timestamp + 11 days);
-        vm.prank(owner);
+        vm.startPrank(owner);
         flightTicket.withdrawFlightFunds(flightId);
         assertEq(flightTicket.getFlightBalance(flightId), 0);
+        vm.stopPrank();
     }
 
-    function testWithdrawFlightFundsFails_NotOwner() public {
-        vm.expectRevert(Ownable.OwnableUnauthorizedAccount.selector);
-        vm.prank(passenger);
-        flightTicket.withdrawFlightFunds(flightId);
+    function testWithdrawFlightFundsFailsNotOwner() public {
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, passenger));
+    vm.startPrank(passenger);
+    flightTicket.withdrawFlightFunds(flightId);
+    vm.stopPrank();
     }
 
-    function testWithdrawFlightFundsFails_BeforeDeparture() public {
-        vm.expectRevert(FlightTicket.FlightTicket_WaitForFlightTime.selector);
-        vm.prank(owner);
+    function testWithdrawFlightFundsFailsBeforeDeparture() public {
+        uint48 departureTime = s_flights[2].departureTime;
+        vm.expectRevert(abi.encodeWithSelector(FlightTicket.FlightTicket_WaitForFlightTime.selector, flightId, departureTime));
+        vm.startPrank(owner);
         flightTicket.withdrawFlightFunds(flightId);
     }
 }

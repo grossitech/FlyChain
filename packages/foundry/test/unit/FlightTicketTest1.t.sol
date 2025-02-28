@@ -3,24 +3,27 @@ pragma solidity ^0.8.19;
 
 import {Test} from "forge-std/Test.sol";
 import "../../contracts/FlightTicket.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract FlightTicketTest1 is Test {
     FlightTicket private flightTicket;
     address private owner = address(1);
     address private user = address(2);
-    uint256 private flightId = 0; // ID do voo inicial
+    uint256 private flightId = 0; 
     uint256 private ticketPrice = 1 ether;
     uint256 private totalSeats = 10;
-    uint256 private departureTime = block.timestamp + 1 days; 
+    uint256 private departureTime = block.timestamp + 7 days; 
 
     function setUp() public {
         flightTicket = new FlightTicket(owner);
 
-        uint48 testDepartureTime = uint48(block.timestamp + 1 days);
+        uint48 testDepartureTime = uint48(block.timestamp + 7 days);
+        departureTime = testDepartureTime;
 
         // Simulando a criação de um voo
-        vm.prank(owner);
+        vm.startPrank(owner);
         flightTicket.addFlight("JFK", "LAX", testDepartureTime, "Boeing 737", 100);
+        vm.stopPrank();
     }
 
     /// @dev Teste 1: Deve retornar o número correto de assentos disponíveis

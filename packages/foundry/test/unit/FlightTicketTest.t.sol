@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import {Test} from "forge-std/Test.sol";
 import "../../contracts/FlightTicket.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract FlightTicketTest is Test {
     FlightTicket private flightTicket;
@@ -59,7 +60,7 @@ contract FlightTicketTest is Test {
         uint48 departureTime = uint48(nowTime + 7 days - 1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                FlightTicket.FlightTicket_FlightCannotBeLessThanOneDay.selector, 
+                FlightTicket.FlightTicket_FlightCannotBeLessThanOneWeek.selector, 
                 uint256(departureTime), 
                 nowTime
             )
