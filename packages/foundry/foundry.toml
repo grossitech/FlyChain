@@ -29,7 +29,7 @@ gnosis = "https://rpc.gnosischain.com"
 chiado = "https://rpc.chiadochain.net"
 base = "https://mainnet.base.org"
 baseSepolia = "https://sepolia.base.org"
-scrollSepolia = "https://sepolia-rpc.scroll.io"
+scrollSepolia = "${SCROLL_RPC_URL}"
 scroll = "https://rpc.scroll.io"
 pgn = "https://rpc.publicgoods.network"
 pgnTestnet = "https://sepolia.publicgoods.network"
@@ -38,6 +38,7 @@ pgnTestnet = "https://sepolia.publicgoods.network"
 [etherscan]
 polygonMumbai = { key = "${ETHERSCAN_API_KEY}" }
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
+scroll = { key = "${SCROLL_API_KEY}" }
 
 
 
