@@ -1,5 +1,8 @@
 # FlyChain: Revolucionando a Venda de Passagens Aéreas com Blockchain
-<img src="https://github.com/Cyber0Ulmo/HKT-AT-0V/blob/develop/Flychain.png?raw=true">
+
+<i>Projeto elaborado para o Hackathon da Modular Crypto fev/2025.</i>
+ 
+<img  align=center src="https://github.com/Cyber0Ulmo/HKT-AT-0V/blob/develop/Flychain.png?raw=true">
 
 ## Visão Geral
 
@@ -86,7 +89,7 @@ FlyChain (Contrato `FlightTicket.sol`) é uma solução inovadora que utiliza te
 
 ## Contato
 
-Link do Projeto: [https://github.com/Cyber0Ulmo/HKT-AT-0V](https://github.com/Cyber0Ulmo/HKT-AT-0V)
+Link original do Projeto: [https://github.com/Cyber0Ulmo/HKT-AT-0V](https://github.com/Cyber0Ulmo/HKT-AT-0V)
 
 ## Licença
 
