@@ -1,96 +1,101 @@
-# FlyChain: Revolucionando a Venda de Passagens Aéreas com Blockchain
+# FlyChain: Revolutionizing Airline Ticket Sales with Blockchain
 
-<i>Projeto elaborado para o Hackathon da Modular Crypto fev/2025.</i>
- 
-<img  align=center src="https://github.com/Cyber0Ulmo/HKT-AT-0V/blob/develop/Flychain.png?raw=true">
+<i>🏆 Winning project developed for the Modular Carnival Hackathon by Modular Crypto — February 2025.</i>
 
-## Visão Geral
+<img align=center src="https://github.com/Cyber0Ulmo/HKT-AT-0V/blob/develop/Flychain.png?raw=true">
 
-FlyChain (Contrato `FlightTicket.sol`) é uma solução inovadora que utiliza tecnologia blockchain para transformar o processo de venda e gerenciamento de passagens aéreas. Desenvolvido na rede Scroll, o projeto oferece uma plataforma transparente, eficiente e automatizada para passageiros e empresas aéreas.
+## Overview
 
-## Características Principais
+FlyChain (`FlightTicket.sol` contract) is an innovative solution that leverages blockchain technology to transform the process of selling and managing airline tickets. Built on the Scroll network, the project offers a transparent, efficient, and automated platform for both passengers and airlines.
 
-### Para Passageiros
-- **Reserva Direta**: Reserve assentos diretamente através do contrato inteligente.
-- **Cancelamento Flexível**: Cancele passagens até uma hora antes do voo, com reembolso automático.
-- **Gerenciamento de Saldo**: Deposite e retire fundos de sua conta no contrato.
-- **Transparência Total**: Todas as transações são registradas na blockchain.
+## 🌍 Available Languages
 
-### Para Empresas Aéreas
-- **Automação de Processos**: Redução significativa de custos operacionais.
-- **Gestão Eficiente**: Controle total sobre voos, assentos e receitas.
-- **Dados em Tempo Real**: Acesso imediato a informações sobre vendas e ocupação.
+- 🇺🇸 [English](README.md)
+- 🇧🇷 [Português Brasileiro](README.pt-BR.md)
 
-## Tecnologias Utilizadas
+## Key Features
 
-- **Solidity**: Linguagem de programação para contratos inteligentes.
-- **ERC1155**: Padrão de token multi-ativos para representação de passagens.
-- **Rede Scroll**: Oferece escalabilidade, baixo custo e alta velocidade de transações.
+### For Passengers
+- **Direct Booking**: Book seats directly through the smart contract.
+- **Flexible Cancellation**: Cancel tickets up to one hour before the flight with automatic refunds.
+- **Balance Management**: Deposit and withdraw funds from your contract account.
+- **Full Transparency**: All transactions are recorded on the blockchain.
 
-## Funcionalidades do Contrato Inteligente
+### For Airlines
+- **Process Automation**: Significantly reduces operational costs.
+- **Efficient Management**: Full control over flights, seats, and revenue.
+- **Real-Time Data**: Instant access to sales and occupancy information.
 
-### Gerenciamento de Voos
-- `addFlight`: Permite que a empresa aérea adicione novos voos com detalhes completos.
-- `getFlight`: Recupera informações detalhadas sobre um voo específico.
+## Technologies Used
 
-### Reserva de Assentos
-- `bookSeat`: Permite que passageiros reservem assentos pagando com ether.
-- `bookSeatUsingPassengerBalance`: Opção de reserva utilizando saldo pré-depositado.
+- **Solidity**: Smart contract programming language.
+- **ERC1155**: Multi-token standard for representing tickets.
+- **Scroll Network**: Provides scalability, low cost, and high-speed transactions.
 
-### Cancelamento e Reembolso
-- `cancelTicket`: Passageiros podem cancelar reservas e receber reembolso automático.
+## Smart Contract Functionalities
 
-### Gerenciamento de Saldo
-- `addPassengerBalance`: Passageiros podem adicionar saldo à sua conta.
-- `claimPassengerBalance`: Permite a retirada do saldo acumulado.
+### Flight Management
+- `addFlight`: Allows airlines to add new flights with complete details.
+- `getFlight`: Retrieves detailed information about a specific flight.
 
-### Funcionalidades para Empresas Aéreas
-- `getFlightBalance`: Verifica o saldo acumulado para cada voo.
-- `withdrawFlightFunds`: Permite a retirada de fundos após a partida do voo.
+### Seat Booking
+- `bookSeat`: Enables passengers to book seats using Ether.
+- `bookSeatUsingPassengerBalance`: Option to book using pre-deposited balance.
 
-## Vantagens da Rede Scroll
+### Cancellation and Refund
+- `cancelTicket`: Passengers can cancel bookings and receive automatic refunds.
 
-- **Escalabilidade**: Suporta um grande volume de transações.
-- **Baixo Custo**: Taxas de transação reduzidas.
-- **Alta Velocidade**: Confirmações rápidas de transações.
-- **Compatibilidade com Ethereum**: Facilita a integração com o ecossistema Ethereum.
+### Balance Management
+- `addPassengerBalance`: Passengers can deposit funds into their account.
+- `claimPassengerBalance`: Allows withdrawal of accumulated balance.
 
-## Roadmap de Desenvolvimento
+### Airline-Specific Functions
+- `getFlightBalance`: Check accumulated balance for each flight.
+- `withdrawFlightFunds`: Allows fund withdrawal after flight departure.
 
-### Fase 1: Personalização e Segurança
-- Implementação de mapa de assentos interativo.
-- Seleção múltipla de assentos.
-- Sistema de blocklist para carteiras.
-- Funcionalidade de cancelamento pela empresa aérea.
+## Advantages of the Scroll Network
 
-### Fase 2: Expansão de Funcionalidades
-- Introdução de diferentes categorias de assento.
-- Sistema de upgrades flexíveis.
-- Integração de programa de fidelidade.
-- Implementação de revenda de passagens.
+- **Scalability**: Handles high transaction volumes.
+- **Low Cost**: Reduced transaction fees.
+- **High Speed**: Fast transaction confirmations.
+- **Ethereum Compatibility**: Easy integration with the Ethereum ecosystem.
 
-### Fase 3: Integração e Parcerias
-- Desenvolvimento de API para sistemas de reserva existentes.
-- Estabelecimento de parcerias com seguradoras.
-- Suporte a contratos multi-companhia.
+## Development Roadmap
 
-### Fase 4: Inovações Avançadas
-- Tokenização de serviços adicionais (refeições, bagagem extra).
-- Implementação de sistema de compensação de carbono.
-- Integração com protocolos DeFi para opções financeiras avançadas.
+### Phase 1: Customization and Security
+- Implementation of an interactive seat map.
+- Multiple seat selection.
+- Wallet blocklist system.
+- Airline-initiated cancellation feature.
 
-## Como Contribuir
+### Phase 2: Feature Expansion
+- Introduction of different seat categories.
+- Flexible upgrade system.
+- Loyalty program integration.
+- Implementation of ticket resale.
 
-1. Faça um fork do repositório
-2. Crie uma branch para sua feature (`git checkout -b feature/NovaFuncionalidade`)
-3. Faça commit das suas alterações (`git commit -m 'Adiciona nova funcionalidade'`)
-4. Faça push para a branch (`git push origin feature/NovaFuncionalidade`)
-5. Abra um Pull Request
+### Phase 3: Integration and Partnerships
+- API development for existing reservation systems.
+- Partnerships with insurance providers.
+- Support for multi-airline contracts.
 
-## Contato
+### Phase 4: Advanced Innovations
+- Tokenization of additional services (meals, extra baggage).
+- Carbon offset system implementation.
+- Integration with DeFi protocols for advanced financial options.
 
-Link original do Projeto: [https://github.com/Cyber0Ulmo/HKT-AT-0V](https://github.com/Cyber0Ulmo/HKT-AT-0V)
+## How to Contribute
 
-## Licença
+1. Fork this repository  
+2. Create a branch for your feature (`git checkout -b feature/NewFeature`)  
+3. Commit your changes (`git commit -m 'Add new feature'`)  
+4. Push to the branch (`git push origin feature/NewFeature`)  
+5. Open a Pull Request  
 
-Este projeto está licenciado sob a Licença MIT
+## Contact
+
+Original project link: [https://github.com/Cyber0Ulmo/HKT-AT-0V](https://github.com/Cyber0Ulmo/HKT-AT-0V)
+
+## License
+
+This project is licensed under the MIT License.
